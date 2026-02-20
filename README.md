@@ -5,7 +5,7 @@ A rich, customizable 3-line status line for [Claude Code](https://docs.anthropic
 ```
 🤖 Opus 4 › my-project › main* › 57.0K/200.0K › $1.23
 ├ [ctx] ━━──────── 28% › [5h] ━━━━━───── 50% › [7d] ━━━━━━━─── 80%
-╰ [5h] ↻ 04:00 21 Feb › [7d] ↻ 22:00 22 Feb
+╰ [↻5h] 04:00 21 Feb › [↻7d] 22:00 22 Feb
 ```
 
 **Line 1** — Model, directory, git branch, token usage, session cost

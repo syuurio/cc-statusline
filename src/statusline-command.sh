@@ -262,8 +262,8 @@ fi
 # LINE 3: Reset times
 line3+="${C_GRAY}╰${C_RESET}"
 if [[ -n "$five_hour_pct" ]] && [[ "$five_hour_pct" != "null" ]]; then
-    line3+=" ${C_GRAY_LIGHT}[5h]${C_RESET} ${C_GRAY}↻ ${five_reset_fmt:-—}${C_RESET}"
-    line3+="${SEP}${C_GRAY_LIGHT}[7d]${C_RESET} ${C_GRAY}↻ ${seven_reset_fmt:-—}${C_RESET}"
+    line3+=" ${C_GRAY_LIGHT}[↻5h]${C_RESET} ${C_GRAY}${five_reset_fmt:-—}${C_RESET}"
+    line3+="${SEP}${C_GRAY_LIGHT}[↻7d]${C_RESET} ${C_GRAY}${seven_reset_fmt:-—}${C_RESET}"
 fi
 
 printf "%s\n%s\n%s" "$line1" "$line2" "$line3"
