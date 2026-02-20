@@ -204,8 +204,8 @@ five_hour_pct=$(_jqu '.five_hour.utilization // empty')
 seven_day_pct=$(_jqu '.seven_day.utilization // empty')
 five_hour_reset=$(_jqu '.five_hour.resets_at // empty')
 seven_day_reset=$(_jqu '.seven_day.resets_at // empty')
-five_reset_fmt=$(format_reset_time "${five_hour_reset:-}" "%H:%M")
-seven_reset_fmt=$(format_reset_time "${seven_day_reset:-}" "%-m/%-d %H:%M")
+five_reset_fmt=$(format_reset_time "${five_hour_reset:-}" "%H:%M %-d %b")
+seven_reset_fmt=$(format_reset_time "${seven_day_reset:-}" "%H:%M %-d %b")
 
 # ══════════════════════════════════════════════════════════════════
 # BUILD OUTPUT
@@ -260,10 +260,10 @@ if [[ -n "$five_hour_pct" ]] && [[ "$five_hour_pct" != "null" ]]; then
 fi
 
 # LINE 3: Reset times
-line3+="${C_GRAY}╰${C_RESET}"
+line3+="${C_GRAY}↻${C_RESET}"
 if [[ -n "$five_hour_pct" ]] && [[ "$five_hour_pct" != "null" ]]; then
-    line3+=" ${C_GRAY}5-hour resets ${five_reset_fmt:-—}${C_RESET}"
-    line3+="${SEP}${C_GRAY}weekly resets ${seven_reset_fmt:-—}${C_RESET}"
+    line3+=" ${C_GRAY_LIGHT}[5h]${C_RESET} ${C_GRAY}${five_reset_fmt:-—}${C_RESET}"
+    line3+=" ${C_GRAY_LIGHT}[7d]${C_RESET} ${C_GRAY}${seven_reset_fmt:-—}${C_RESET}"
 fi
 
 printf "%s\n%s\n%s" "$line1" "$line2" "$line3"
