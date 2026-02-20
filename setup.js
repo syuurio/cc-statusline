@@ -45,7 +45,7 @@ const allFields = [
 if (hasOAuth) {
   allFields.push(
     { value: 'rateBar', label: '5h/7d rate bars', hint: '[5h] ━━━━━───── 50%' },
-    { value: 'resetTimes', label: 'Reset times', hint: '↻ [5h] 04:00 21 Feb' },
+    { value: 'resetTimes', label: 'Reset times', hint: '[5h] ↻ 04:00 21 Feb' },
   )
 }
 
