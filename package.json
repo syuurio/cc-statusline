@@ -1,0 +1,19 @@
+{
+  "name": "@syuurio/cc-statusline",
+  "version": "1.0.0",
+  "description": "Interactive setup wizard for cc-statusline — a custom 3-line status line for Claude Code",
+  "type": "module",
+  "bin": {
+    "cc-statusline": "./bin/cc-statusline"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.9.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT"
+}

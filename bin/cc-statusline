@@ -1,0 +1,5 @@
+#!/usr/bin/env node
+import('../setup.js').catch(() => {
+  console.error('cc-statusline: setup.js not found — package may not be fully installed.')
+  process.exit(1)
+});
