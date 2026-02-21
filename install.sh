@@ -1,6 +1,8 @@
 #!/bin/bash
 # cc-statusline installer
-# Usage: curl -fsSL https://raw.githubusercontent.com/syuurio/cc-statusline/main/install.sh | bash
+# Usage:
+#   Default:  curl -fsSL https://raw.githubusercontent.com/syuurio/cc-statusline/main/install.sh | bash
+#   Wizard:   curl -fsSL https://raw.githubusercontent.com/syuurio/cc-statusline/main/install.sh | bash -s -- --wizard
 
 set -euo pipefail
 
@@ -34,6 +36,30 @@ check_dep() {
     command -v "$1" &>/dev/null || fail "Missing dependency: ${BOLD}$1${RESET}. Please install it first."
 }
 
+check_node_version() {
+    if ! command -v node &>/dev/null; then
+        fail "Missing dependency: ${BOLD}node${RESET} (>= 18). Install from https://nodejs.org/"
+    fi
+    local version major
+    version=$(node --version 2>/dev/null)
+    major=$(echo "$version" | sed 's/^v//' | cut -d. -f1)
+    if [[ -z "$major" ]] || [[ "$major" -lt 18 ]]; then
+        fail "Node.js >= 18 required (found ${BOLD}$version${RESET}). Update from https://nodejs.org/"
+    fi
+}
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ARGUMENT PARSING
+# ══════════════════════════════════════════════════════════════════════════════
+
+WIZARD_MODE=0
+for arg in "$@"; do
+    case "$arg" in
+        --wizard) WIZARD_MODE=1 ;;
+        *)        fail "Unknown option: $arg" ;;
+    esac
+done
+
 # ══════════════════════════════════════════════════════════════════════════════
 # PRE-FLIGHT CHECKS
 # ══════════════════════════════════════════════════════════════════════════════
@@ -45,16 +71,53 @@ echo ""
 
 # Check required dependencies
 info "Checking dependencies..."
-for dep in jq bc git curl; do
-    check_dep "$dep"
-done
-
-# python3 is needed for date formatting on macOS
-if [[ "$(uname -s)" == "Darwin" ]]; then
-    check_dep python3
+if [[ "$WIZARD_MODE" == "1" ]]; then
+    for dep in git curl; do
+        check_dep "$dep"
+    done
+    check_node_version
+else
+    for dep in jq bc git curl; do
+        check_dep "$dep"
+    done
+    # python3 is needed for date formatting on macOS
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+        check_dep python3
+    fi
 fi
-
 ok "All dependencies found."
+
+# ══════════════════════════════════════════════════════════════════════════════
+# WIZARD
+# ══════════════════════════════════════════════════════════════════════════════
+
+run_wizard() {
+    local tmpdir
+    tmpdir=$(mktemp -d "${TMPDIR:-/tmp}/cc-statusline-wizard.XXXXXX")
+    trap 'rm -rf "$tmpdir"' EXIT
+
+    info "Cloning cc-statusline repository..."
+    git clone --depth 1 https://github.com/syuurio/cc-statusline.git "$tmpdir" 2>/dev/null \
+        || fail "Failed to clone repository."
+    ok "Repository cloned."
+
+    info "Installing dependencies..."
+    (cd "$tmpdir" && npm install --no-fund --no-audit 2>/dev/null) \
+        || fail "Failed to install npm dependencies."
+    ok "Dependencies installed."
+
+    info "Starting setup wizard..."
+    echo ""
+    node "$tmpdir/setup.js" < /dev/tty
+}
+
+# ══════════════════════════════════════════════════════════════════════════════
+# MAIN
+# ══════════════════════════════════════════════════════════════════════════════
+
+if [[ "$WIZARD_MODE" == "1" ]]; then
+    run_wizard
+else
 
 # ══════════════════════════════════════════════════════════════════════════════
 # DOWNLOAD
@@ -161,3 +224,5 @@ echo ""
 echo "  Uninstall:"
 echo "    curl -fsSL $REPO_URL/uninstall.sh | bash"
 echo ""
+
+fi

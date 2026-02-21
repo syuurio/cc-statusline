@@ -29,9 +29,7 @@ Restart Claude Code after installing.
 Want to customize? The wizard lets you configure everything visually with a live preview:
 
 ```bash
-git clone https://github.com/syuurio/cc-statusline.git
-cd cc-statusline && npm install
-node setup.js
+curl -fsSL https://raw.githubusercontent.com/syuurio/cc-statusline/main/install.sh | bash -s -- --wizard
 ```
 
 The wizard guides you through:
