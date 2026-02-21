@@ -87,6 +87,15 @@ else
 fi
 ok "All dependencies found."
 
+# Fetch version info (wizard shows its own version via setup.js)
+if [[ "$WIZARD_MODE" != "1" ]]; then
+    VERSION=$(curl -fsSL "$REPO_URL/package.json" 2>/dev/null \
+        | grep '"version"' | head -1 | sed 's/.*"\([0-9][0-9.]*\)".*/\1/') || true
+    if [[ -n "${VERSION:-}" ]]; then
+        info "cc-statusline ${BOLD}v$VERSION${RESET}"
+    fi
+fi
+
 # ══════════════════════════════════════════════════════════════════════════════
 # WIZARD
 # ══════════════════════════════════════════════════════════════════════════════
@@ -102,7 +111,7 @@ run_wizard() {
     ok "Repository cloned."
 
     info "Installing dependencies..."
-    (cd "$tmpdir" && npm install --no-fund --no-audit 2>/dev/null) \
+    (cd "$tmpdir" && npm install --no-fund --no-audit >/dev/null 2>&1) \
         || fail "Failed to install npm dependencies."
     ok "Dependencies installed."
 

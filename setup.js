@@ -10,10 +10,12 @@ import { generateScript } from './lib/generate.js'
 import { detectCredentials } from './lib/detect-credentials.js'
 import { applyStatusLine } from './lib/patch-settings.js'
 
+const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'))
+
 const SCRIPT_DEST = join(homedir(), '.claude', 'statusline-command.sh')
 const SETTINGS_PATH = join(homedir(), '.claude', 'settings.json')
 
-p.intro('cc-statusline setup')
+p.intro(`cc-statusline setup · v${pkg.version}`)
 
 // ── Step 1: Detect credentials ──────────────────────────────────────────
 
