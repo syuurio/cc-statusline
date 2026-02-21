@@ -94,7 +94,7 @@ ok "All dependencies found."
 run_wizard() {
     local tmpdir
     tmpdir=$(mktemp -d "${TMPDIR:-/tmp}/cc-statusline-wizard.XXXXXX")
-    trap 'rm -rf "$tmpdir"' EXIT
+    trap "rm -rf \"$tmpdir\"" EXIT
 
     info "Cloning cc-statusline repository..."
     git clone --depth 1 https://github.com/syuurio/cc-statusline.git "$tmpdir" 2>/dev/null \
