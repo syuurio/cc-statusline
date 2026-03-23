@@ -47,14 +47,32 @@ describe('generateScript', () => {
     assert.match(script, /printf "%s\\n%s\\n%s" "\$line1" "\$line2" "\$line3"/)
   })
 
-  it('rateBar excluded → no get_access_token / fetch_usage_bg', () => {
+  it('rateBar excluded → no rate_limits parsing', () => {
     const script = generateScript({
       ...defaultConfig,
       fields: ['model', 'dir', 'tokens', 'cost', 'ctxBar'],
     })
+    assert.ok(!script.includes('rate_limits'))
+    assert.ok(!script.includes('five_hour_pct'))
+  })
+
+  it('no OAuth or cache code in any config', () => {
+    const script = generateScript(defaultConfig)
     assert.ok(!script.includes('get_access_token'))
     assert.ok(!script.includes('fetch_usage_bg'))
     assert.ok(!script.includes('CACHE_DIR'))
+    assert.ok(!script.includes('USAGE_CACHE'))
+    assert.ok(!script.includes('USAGE_LOCK'))
+    assert.ok(!script.includes('curl'))
+  })
+
+  it('rateBar included → parses rate_limits from stdin', () => {
+    const script = generateScript({
+      ...defaultConfig,
+      fields: ['model', 'rateBar'],
+    })
+    assert.ok(script.includes('.rate_limits.five_hour.used_percentage'))
+    assert.ok(script.includes('.rate_limits.seven_day.used_percentage'))
   })
 
   it('resetTimes excluded → no format_reset_time', () => {
@@ -63,6 +81,25 @@ describe('generateScript', () => {
       fields: ['model', 'dir', 'ctxBar', 'rateBar'],
     })
     assert.ok(!script.includes('format_reset_time'))
+  })
+
+  it('resetTimes included → epoch-based format_reset_time (no python3)', () => {
+    const script = generateScript({
+      ...defaultConfig,
+      fields: ['model', 'resetTimes'],
+    })
+    assert.ok(script.includes('format_reset_time'))
+    assert.ok(script.includes('.rate_limits.five_hour.resets_at'))
+    assert.ok(!script.includes('python3'))
+    assert.ok(!script.includes('fromisoformat'))
+  })
+
+  it('resetTimes → platform detection emitted; no resetTimes → omitted', () => {
+    const with_ = generateScript({ ...defaultConfig, fields: ['model', 'resetTimes'] })
+    assert.ok(with_.includes('_IS_MACOS'))
+
+    const without = generateScript({ ...defaultConfig, fields: ['model', 'rateBar'] })
+    assert.ok(!without.includes('_IS_MACOS'))
   })
 
   it('thin bar style → ━ and ─', () => {

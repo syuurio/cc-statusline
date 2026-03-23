@@ -24,13 +24,6 @@ ICON_SEPARATOR="›"
 USAGE_WARN=50
 USAGE_DANGER=80
 
-# Cache settings
-CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/cc-statusline"
-USAGE_CACHE="$CACHE_DIR/usage.json"
-USAGE_LOCK="$CACHE_DIR/.fetch.lock"
-CACHE_MAX_AGE=180
-LOCK_MAX_AGE=30
-
 # Platform detection
 _IS_MACOS=0
 [[ "$(uname -s)" == "Darwin" ]] && _IS_MACOS=1
@@ -38,14 +31,6 @@ _IS_MACOS=0
 # ══════════════════════════════════════════════════════════════════
 # HELPER FUNCTIONS
 # ══════════════════════════════════════════════════════════════════
-
-get_file_mtime() {
-    if [[ "$_IS_MACOS" == "1" ]]; then
-        stat -f '%m' "$1" 2>/dev/null || echo 0
-    else
-        stat -c '%Y' "$1" 2>/dev/null || echo 0
-    fi
-}
 
 format_tokens() {
     local num=$1
@@ -89,85 +74,12 @@ progress_bar() {
 }
 
 format_reset_time() {
-    local iso="$1" fmt="$2"
-    [[ -z "$iso" ]] || [[ "$iso" == "null" ]] && return
-    local epoch
+    local epoch="$1" fmt="$2"
+    [[ -z "$epoch" ]] || [[ "$epoch" == "null" ]] && return
     if [[ "$_IS_MACOS" == "1" ]]; then
-        epoch=$(python3 -c "from datetime import datetime; print(int(datetime.fromisoformat('$iso').timestamp()))" 2>/dev/null) || return
         date -r "$epoch" +"$fmt" 2>/dev/null
     else
-        if date -d "$iso" +"$fmt" 2>/dev/null; then
-            return
-        fi
-        epoch=$(python3 -c "from datetime import datetime; print(int(datetime.fromisoformat('$iso').timestamp()))" 2>/dev/null) || return
         date -d "@$epoch" +"$fmt" 2>/dev/null
-    fi
-}
-
-# ══════════════════════════════════════════════════════════════════
-# CREDENTIAL & USAGE FETCH
-# ══════════════════════════════════════════════════════════════════
-
-get_access_token() {
-    if command -v security &>/dev/null; then
-        local json
-        json=$(security find-generic-password -s "Claude Code-credentials" -w 2>/dev/null) || true
-        if [[ -n "$json" ]]; then
-            local token
-            token=$(echo "$json" | jq -r '.claudeAiOauth.accessToken // empty' 2>/dev/null)
-            [[ -n "$token" ]] && echo "$token" && return 0
-        fi
-    fi
-    local cred="$HOME/.claude/.credentials.json"
-    if [[ -f "$cred" ]]; then
-        jq -r '.claudeAiOauth.accessToken // empty' "$cred" 2>/dev/null
-        return
-    fi
-    return 1
-}
-
-fetch_usage_bg() {
-    if [[ -d "$USAGE_LOCK" ]]; then
-        local lock_age=$(( $(date +%s) - $(get_file_mtime "$USAGE_LOCK") ))
-        if [[ "$lock_age" -ge "$LOCK_MAX_AGE" ]]; then
-            rmdir "$USAGE_LOCK" 2>/dev/null || true
-        else
-            return 0
-        fi
-    fi
-    mkdir "$USAGE_LOCK" 2>/dev/null || return 0
-    (
-        trap 'rmdir "$USAGE_LOCK" 2>/dev/null' EXIT
-        local token
-        token=$(get_access_token) || { return; }
-        local tf
-        tf=$(mktemp "$CACHE_DIR/tok.XXXXXX")
-        chmod 600 "$tf"
-        printf 'Authorization: Bearer %s' "$token" > "$tf"
-        local resp
-        resp=$(curl -s --max-time 5 "https://api.anthropic.com/api/oauth/usage" \
-            -H @"$tf" \
-            -H "anthropic-beta: oauth-2025-04-20" 2>/dev/null)
-        rm -f "$tf"
-        if [[ -n "$resp" ]] && echo "$resp" | jq -e '.five_hour' > /dev/null 2>&1; then
-            resp=$(echo "$resp" | jq ". + {\"fetched_at\": $(date +%s)}")
-            local tmp
-            tmp=$(mktemp "$CACHE_DIR/cache.XXXXXX")
-            echo "$resp" > "$tmp" && mv "$tmp" "$USAGE_CACHE"
-        fi
-    ) & disown
-}
-
-get_usage_data() {
-    if [[ -f "$USAGE_CACHE" ]]; then
-        cat "$USAGE_CACHE"
-        local age=$(( $(date +%s) - $(get_file_mtime "$USAGE_CACHE") ))
-        if [[ "$age" -ge "$CACHE_MAX_AGE" ]]; then
-            fetch_usage_bg
-        fi
-    else
-        fetch_usage_bg
-        echo '{}'
     fi
 }
 
@@ -175,35 +87,27 @@ get_usage_data() {
 # MAIN LOGIC
 # ══════════════════════════════════════════════════════════════════
 
-mkdir -p "$CACHE_DIR"
-chmod 700 "$CACHE_DIR"
-
 input=$(cat)
 _jq() { echo "$input" | jq -r "$1" 2>/dev/null; }
 
 model=$(_jq '.model.display_name // empty')
 cwd=$(_jq '.workspace.current_dir // empty')
-remaining_pct=$(_jq '.context_window.remaining_percentage // empty')
+used_pct=$(_jq '.context_window.used_percentage // empty')
+context_size=$(_jq '.context_window.context_window_size // 200000')
 total_input=$(_jq '.context_window.total_input_tokens // 0')
 total_output=$(_jq '.context_window.total_output_tokens // 0')
-context_size=$(_jq '.context_window.context_window_size // 200000')
 session_cost=$(_jq '.cost.total_cost_usd // 0')
 
-if [[ -n "$remaining_pct" ]]; then
-    used_pct=$(printf "%.0f" "$(echo "100 - $remaining_pct" | bc)" 2>/dev/null) || used_pct=0
-else
-    used_pct=0
-fi
+used_pct=${used_pct:-0}
+
+ctx_tokens=$(( ${used_pct:-0} * ${context_size:-200000} / 100 ))
 
 total_tokens=$(( ${total_input:-0} + ${total_output:-0} ))
 
-usage_data=$(get_usage_data)
-_jqu() { echo "$usage_data" | jq -r "$1" 2>/dev/null; }
-
-five_hour_pct=$(_jqu '.five_hour.utilization // empty')
-seven_day_pct=$(_jqu '.seven_day.utilization // empty')
-five_hour_reset=$(_jqu '.five_hour.resets_at // empty')
-seven_day_reset=$(_jqu '.seven_day.resets_at // empty')
+five_hour_pct=$(_jq '.rate_limits.five_hour.used_percentage // empty')
+seven_day_pct=$(_jq '.rate_limits.seven_day.used_percentage // empty')
+five_hour_reset=$(_jq '.rate_limits.five_hour.resets_at // empty')
+seven_day_reset=$(_jq '.rate_limits.seven_day.resets_at // empty')
 five_reset_fmt=$(format_reset_time "${five_hour_reset:-}" "%H:%M %-d %b")
 seven_reset_fmt=$(format_reset_time "${seven_day_reset:-}" "%H:%M %-d %b")
 
@@ -235,13 +139,12 @@ if [[ -n "$cwd" ]] && [[ -d "$cwd" ]]; then
         fi
     fi
 fi
-formatted_tokens=$(format_tokens "$total_tokens")
+formatted_ctx=$(format_tokens "$ctx_tokens")
 formatted_max=$(format_tokens "$context_size")
-line1+="${SEP}${C_CYAN}${formatted_tokens}/${formatted_max}${C_RESET}"
-if [[ -n "$session_cost" ]] && [[ "$session_cost" != "0" ]]; then
-    formatted_cost=$(printf "%.2f" "$session_cost")
-    line1+="${SEP}${C_ORANGE}\$${formatted_cost}${C_RESET}"
-fi
+line1+="${SEP}${C_CYAN}${formatted_ctx}/${formatted_max}${C_RESET}"
+formatted_cum=$(format_tokens "$total_tokens")
+formatted_cost=$(printf "%.2f" "$session_cost")
+line1+="${SEP}${C_ORANGE}${formatted_cum}, \$${formatted_cost}${C_RESET}"
 
 # LINE 2: Bars
 line2+="${C_GRAY}├${C_RESET}"
@@ -262,8 +165,8 @@ fi
 # LINE 3: Reset times
 line3+="${C_GRAY}╰${C_RESET}"
 if [[ -n "$five_hour_pct" ]] && [[ "$five_hour_pct" != "null" ]]; then
-    line3+=" ${C_GRAY_LIGHT}[↻5h]${C_RESET} ${C_GRAY}${five_reset_fmt:-—}${C_RESET}"
-    line3+="${SEP}${C_GRAY_LIGHT}[↻7d]${C_RESET} ${C_GRAY}${seven_reset_fmt:-—}${C_RESET}"
+    line3+=" ${C_GRAY_LIGHT}[↻ 5h]${C_RESET} ${C_GRAY}${five_reset_fmt:-—}${C_RESET}"
+    line3+="${SEP}${C_GRAY_LIGHT}[↻ 7d]${C_RESET} ${C_GRAY}${seven_reset_fmt:-—}${C_RESET}"
 fi
 
 printf "%s\n%s\n%s" "$line1" "$line2" "$line3"
