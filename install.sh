@@ -132,19 +132,28 @@ else
 # DOWNLOAD
 # ══════════════════════════════════════════════════════════════════════════════
 
-info "Downloading statusline script..."
 mkdir -p "$INSTALL_DIR"
 
-# Download to temp file first, then move (atomic)
-tmp_script=$(mktemp "$INSTALL_DIR/install.XXXXXX")
-trap 'rm -f "$tmp_script"' EXIT
+# Prefer local src/ if running from a repo clone, otherwise download from GitHub
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+LOCAL_SCRIPT="$SCRIPT_DIR/src/$SCRIPT_NAME"
 
-if ! curl -fsSL "$REPO_URL/src/$SCRIPT_NAME" -o "$tmp_script"; then
-    fail "Failed to download $SCRIPT_NAME"
+if [[ -f "$LOCAL_SCRIPT" ]]; then
+    info "Installing from local build..."
+    cp "$LOCAL_SCRIPT" "$INSTALL_DIR/$SCRIPT_NAME"
+else
+    info "Downloading statusline script..."
+    # Download to temp file first, then move (atomic)
+    tmp_script=$(mktemp "$INSTALL_DIR/install.XXXXXX")
+    trap 'rm -f "$tmp_script"' EXIT
+
+    if ! curl -fsSL "$REPO_URL/src/$SCRIPT_NAME" -o "$tmp_script"; then
+        fail "Failed to download $SCRIPT_NAME"
+    fi
+
+    mv "$tmp_script" "$INSTALL_DIR/$SCRIPT_NAME"
+    trap - EXIT  # clear trap since file was moved
 fi
-
-mv "$tmp_script" "$INSTALL_DIR/$SCRIPT_NAME"
-trap - EXIT  # clear trap since file was moved
 
 ok "Installed ${BOLD}$INSTALL_DIR/$SCRIPT_NAME${RESET}"
 
