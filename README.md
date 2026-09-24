@@ -3,14 +3,16 @@
 A rich, customizable 3-line status line for [Claude Code](https://docs.anthropic.com/en/docs/claude-code).
 
 ```
-🤖 Opus 4 › my-project › main* › 57.0K/200.0K › $1.23
+◆ work › 🤖 Opus 4 › my-project › main* › 57.0K/200.0K › $1.23
 ├ [ctx] ━━──────── 28% › [5h] ━━━━━───── 50% › [7d] ━━━━━━━─── 80%
 ╰ [↻5h] 04:00 21 Feb › [↻7d] 22:00 22 Feb
 ```
 
-**Line 1** — Model, directory, git branch, token usage, session cost
+**Line 1** — Account, model, directory, git branch, context tokens, session cost
 **Line 2** — Context window bar, 5-hour & 7-day API rate limit bars
 **Line 3** — Rate limit reset times
+
+The account label comes from `DEV_PROFILE` if set, otherwise from the `CLAUDE_CONFIG_DIR` folder name (`~/.claude-work` → `work`); the default `~/.claude` shows as `default`. Each rate-limit window is shown only while Claude Code reports it, and line 3 is omitted when there are none (for example on Team or API plans).
 
 ---
 

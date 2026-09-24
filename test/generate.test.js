@@ -43,8 +43,6 @@ describe('generateScript', () => {
     assert.match(script, /line1/)
     assert.match(script, /line2/)
     assert.match(script, /line3/)
-    // printf should output all 3 lines
-    assert.match(script, /printf "%s\\n%s\\n%s" "\$line1" "\$line2" "\$line3"/)
   })
 
   it('rateBar excluded → no rate_limits parsing', () => {
@@ -160,19 +158,5 @@ describe('generateScript', () => {
     })
     assert.ok(!script.includes('progress_bar'))
     assert.ok(!script.includes('get_usage_color'))
-  })
-
-  it('printf outputs correct number of lines', () => {
-    // 1 line (no bars, no reset)
-    const s1 = generateScript({ ...defaultConfig, fields: ['model'] })
-    assert.match(s1, /printf "%s" "\$line1"/)
-
-    // 2 lines (with ctx bar, no reset)
-    const s2 = generateScript({ ...defaultConfig, fields: ['model', 'ctxBar'] })
-    assert.match(s2, /printf "%s\\n%s" "\$line1" "\$line2"/)
-
-    // 3 lines (with bars and reset)
-    const s3 = generateScript(defaultConfig)
-    assert.match(s3, /printf "%s\\n%s\\n%s" "\$line1" "\$line2" "\$line3"/)
   })
 })

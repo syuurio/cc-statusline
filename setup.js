@@ -36,6 +36,7 @@ if (!hasOAuth) {
 // ── Step 2: Wizard prompts ──────────────────────────────────────────────
 
 const allFields = [
+  { value: 'account', label: 'Account', hint: '◆ work (DEV_PROFILE or CLAUDE_CONFIG_DIR)' },
   { value: 'model', label: 'Model name', hint: '🤖 Opus 4' },
   { value: 'dir', label: 'Directory', hint: 'folder name' },
   { value: 'git', label: 'Git branch', hint: 'with dirty indicator' },

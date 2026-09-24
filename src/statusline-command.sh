@@ -32,6 +32,11 @@ _IS_MACOS=0
 # HELPER FUNCTIONS
 # ══════════════════════════════════════════════════════════════════
 
+to_int() {
+    local v="${1%.*}"
+    [[ "$v" =~ ^-?[0-9]+$ ]] && echo "$v"
+}
+
 format_tokens() {
     local num=$1
     if [[ -z "$num" ]] || [[ "$num" == "null" ]]; then
@@ -90,22 +95,30 @@ format_reset_time() {
 input=$(cat)
 _jq() { echo "$input" | jq -r "$1" 2>/dev/null; }
 
+_cfg_name=$(basename "${CLAUDE_CONFIG_DIR:-.claude}")
+case "$_cfg_name" in
+    .claude) account="${DEV_PROFILE:-default}" ;;
+    .claude-*) account="${_cfg_name#.claude-}" ;;
+    *) account="${_cfg_name#.}" ;;
+esac
+
 model=$(_jq '.model.display_name // empty')
 cwd=$(_jq '.workspace.current_dir // empty')
 used_pct=$(_jq '.context_window.used_percentage // empty')
 context_size=$(_jq '.context_window.context_window_size // 200000')
 total_input=$(_jq '.context_window.total_input_tokens // 0')
-total_output=$(_jq '.context_window.total_output_tokens // 0')
 session_cost=$(_jq '.cost.total_cost_usd // 0')
 
+used_pct=$(to_int "$used_pct")
 used_pct=${used_pct:-0}
 
-ctx_tokens=$(( ${used_pct:-0} * ${context_size:-200000} / 100 ))
+ctx_tokens=$(to_int "$total_input")
+if [[ -z "$ctx_tokens" || "$ctx_tokens" -eq 0 ]]; then
+    ctx_tokens=$(( used_pct * ${context_size:-200000} / 100 ))
+fi
 
-total_tokens=$(( ${total_input:-0} + ${total_output:-0} ))
-
-five_hour_pct=$(_jq '.rate_limits.five_hour.used_percentage // empty')
-seven_day_pct=$(_jq '.rate_limits.seven_day.used_percentage // empty')
+five_int=$(to_int "$(_jq '.rate_limits.five_hour.used_percentage // empty')")
+seven_int=$(to_int "$(_jq '.rate_limits.seven_day.used_percentage // empty')")
 five_hour_reset=$(_jq '.rate_limits.five_hour.resets_at // empty')
 seven_day_reset=$(_jq '.rate_limits.seven_day.resets_at // empty')
 five_reset_fmt=$(format_reset_time "${five_hour_reset:-}" "%H:%M %-d %b")
@@ -119,54 +132,66 @@ line1=""
 line2=""
 line3=""
 SEP=" ${C_GRAY}${ICON_SEPARATOR}${C_RESET} "
+# addN <text>: append a segment to lineN, inserting SEP between segments
+add1() { [[ -n "$line1" ]] && line1+="$SEP"; line1+="$1"; }
+add2() { [[ -n "$line2" ]] && line2+="$SEP"; line2+="$1"; }
+add3() { [[ -n "$line3" ]] && line3+="$SEP"; line3+="$1"; }
 
 # LINE 1: Info fields
+if [[ "$account" == "default" || "$account" == "personal" ]]; then
+    add1 "${C_GRAY}◆ ${account}${C_RESET}"
+else
+    add1 "${C_BOLD}${C_ORANGE}◆ ${account}${C_RESET}"
+fi
 if [[ -n "$model" ]]; then
     short_model=$(echo "$model" | sed 's/Claude //')
-    line1+="${C_PURPLE}${ICON_MODEL} ${short_model}${C_RESET}"
+    add1 "${C_PURPLE}${ICON_MODEL} ${short_model}${C_RESET}"
 fi
 if [[ -n "$cwd" ]]; then
-    line1+="${SEP}${C_BLUE}$(basename "$cwd")${C_RESET}"
+    add1 "${C_BLUE}$(basename "$cwd")${C_RESET}"
 fi
 if [[ -n "$cwd" ]] && [[ -d "$cwd" ]]; then
     git_branch=$(git -C "$cwd" branch --show-current 2>/dev/null)
     if [[ -n "$git_branch" ]]; then
         git_status=$(git -C "$cwd" status --porcelain 2>/dev/null)
         if [[ -n "$git_status" ]]; then
-            line1+="${SEP}${C_YELLOW}${git_branch}*${C_RESET}"
+            add1 "${C_YELLOW}${git_branch}*${C_RESET}"
         else
-            line1+="${SEP}${C_GREEN}${git_branch}${C_RESET}"
+            add1 "${C_GREEN}${git_branch}${C_RESET}"
         fi
     fi
 fi
 formatted_ctx=$(format_tokens "$ctx_tokens")
 formatted_max=$(format_tokens "$context_size")
-line1+="${SEP}${C_CYAN}${formatted_ctx}/${formatted_max}${C_RESET}"
-formatted_cum=$(format_tokens "$total_tokens")
+add1 "${C_CYAN}${formatted_ctx}/${formatted_max}${C_RESET}"
 formatted_cost=$(printf "%.2f" "$session_cost")
-line1+="${SEP}${C_ORANGE}${formatted_cum}, \$${formatted_cost}${C_RESET}"
+add1 "${C_ORANGE}\$${formatted_cost}${C_RESET}"
 
 # LINE 2: Bars
-line2+="${C_GRAY}├${C_RESET}"
 ctx_color=$(get_usage_color "$used_pct")
 ctx_bar=$(progress_bar "$used_pct" 10)
-line2+=" ${C_GRAY_LIGHT}[ctx]${C_RESET} ${ctx_color}${ctx_bar} ${used_pct}%${C_RESET}"
-if [[ -n "$five_hour_pct" ]] && [[ "$five_hour_pct" != "null" ]]; then
-    five_int=${five_hour_pct%.*}
-    seven_int=${seven_day_pct%.*}
-    five_color=$(get_usage_color "$five_int")
-    seven_color=$(get_usage_color "$seven_int")
-    five_bar=$(progress_bar "$five_int" 10)
-    seven_bar=$(progress_bar "$seven_int" 10)
-    line2+="${SEP}${C_GRAY_LIGHT}[5h]${C_RESET} ${five_color}${five_bar} ${five_int}%${C_RESET}"
-    line2+="${SEP}${C_GRAY_LIGHT}[7d]${C_RESET} ${seven_color}${seven_bar} ${seven_int}%${C_RESET}"
+add2 "${C_GRAY_LIGHT}[ctx]${C_RESET} ${ctx_color}${ctx_bar} ${used_pct}%${C_RESET}"
+if [[ -n "$five_int" ]]; then
+    add2 "${C_GRAY_LIGHT}[5h]${C_RESET} $(get_usage_color "$five_int")$(progress_bar "$five_int" 10) ${five_int}%${C_RESET}"
+fi
+if [[ -n "$seven_int" ]]; then
+    add2 "${C_GRAY_LIGHT}[7d]${C_RESET} $(get_usage_color "$seven_int")$(progress_bar "$seven_int" 10) ${seven_int}%${C_RESET}"
 fi
 
 # LINE 3: Reset times
-line3+="${C_GRAY}╰${C_RESET}"
-if [[ -n "$five_hour_pct" ]] && [[ "$five_hour_pct" != "null" ]]; then
-    line3+=" ${C_GRAY_LIGHT}[↻ 5h]${C_RESET} ${C_GRAY}${five_reset_fmt:-—}${C_RESET}"
-    line3+="${SEP}${C_GRAY_LIGHT}[↻ 7d]${C_RESET} ${C_GRAY}${seven_reset_fmt:-—}${C_RESET}"
+if [[ -n "$five_int" ]]; then
+    add3 "${C_GRAY_LIGHT}[↻ 5h]${C_RESET} ${C_GRAY}${five_reset_fmt:-—}${C_RESET}"
+fi
+if [[ -n "$seven_int" ]]; then
+    add3 "${C_GRAY_LIGHT}[↻ 7d]${C_RESET} ${C_GRAY}${seven_reset_fmt:-—}${C_RESET}"
 fi
 
-printf "%s\n%s\n%s" "$line1" "$line2" "$line3"
+out="$line1"
+if [[ -n "$line2" ]]; then
+    if [[ -n "$line3" ]]; then _corner="├"; else _corner="╰"; fi
+    out+=$'\n'"${C_GRAY}${_corner}${C_RESET} ${line2}"
+fi
+if [[ -n "$line3" ]]; then
+    out+=$'\n'"${C_GRAY}╰${C_RESET} ${line3}"
+fi
+printf "%s" "$out"
