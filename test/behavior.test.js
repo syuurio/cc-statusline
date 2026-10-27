@@ -46,31 +46,31 @@ describe('rendered output', () => {
     assert.match(lines.join('\n'), /\[ctx\] ────────── 0%/)
   })
 
-  it('shows the 7d window when the 5h window is absent', () => {
+  it('shows a placeholder for the 5h window when only 7d is present', () => {
     const text = render({
       ...base,
       rate_limits: { seven_day: { used_percentage: 91.2, resets_at: 1790000000 } },
     }).join('\n')
     assert.match(text, /\[7d\] ━━━━━━━━━─ 91%/)
-    assert.doesNotMatch(text, /\[5h\]/)
-    assert.match(text, /\[↻ 7d\]/)
-    assert.doesNotMatch(text, /\[↻ 5h\]/)
+    assert.match(text, /\[5h\] ────────── --%/)
+    assert.match(text, /\[↻ 5h\] — › \[↻ 7d\] \d/)
   })
 
-  it('omits the 7d window when only the 5h window is present', () => {
+  it('shows a placeholder for the 7d window when only 5h is present', () => {
     const text = render({
       ...base,
       rate_limits: { five_hour: { used_percentage: 12, resets_at: 1790000000 } },
     }).join('\n')
     assert.match(text, /\[5h\] ━───────── 12%/)
-    assert.doesNotMatch(text, /\[7d\]/)
-    assert.doesNotMatch(text, /\[↻ 7d\]/)
+    assert.match(text, /\[7d\] ────────── --%/)
+    assert.match(text, /\[↻ 7d\] —$/)
   })
 
-  it('drops the reset line when no rate limits are present', () => {
+  it('keeps the three-line layout before rate limits arrive', () => {
     const lines = render(base)
-    assert.equal(lines.length, 2)
-    assert.match(lines[1], /^╰ \[ctx\]/)
+    assert.equal(lines.length, 3)
+    assert.match(lines[1], /^├ \[ctx\].*\[5h\] ────────── --% › \[7d\] ────────── --%$/)
+    assert.equal(lines[2], '╰ [↻ 5h] — › [↻ 7d] —')
   })
 
   it('shows three lines when both rate windows are present', () => {
@@ -130,5 +130,26 @@ describe('account field', () => {
     const line1 = render(base, { config, env: { DEV_PROFILE: 'work' } })[0]
     assert.doesNotMatch(line1, /◆/)
     assert.match(line1, /^🤖 Opus 4/)
+  })
+})
+
+describe('effort field', () => {
+  it('renders as its own segment after the model', () => {
+    const line1 = render({ ...base, effort: { level: 'xhigh' } })[0]
+    assert.match(line1, /🤖 Opus 4 › ⚡ xhigh › /)
+  })
+
+  it('colors high levels distinctly from low ones', () => {
+    const raw = (level) => spawnSync('bash', ['-c', generateScript(DEFAULT_CONFIG)], {
+      input: JSON.stringify({ ...base, effort: { level } }),
+      encoding: 'utf8',
+    }).stdout
+    assert.match(raw('low'), /\x1b\[38;5;245m⚡ low/)
+    assert.match(raw('high'), /\x1b\[38;5;116m⚡ high/)
+    assert.match(raw('max'), /\x1b\[1m\x1b\[38;5;215m⚡ max/)
+  })
+
+  it('is omitted when the model does not report effort', () => {
+    assert.doesNotMatch(render(base)[0], /⚡/)
   })
 })

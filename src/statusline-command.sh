@@ -103,6 +103,7 @@ case "$_cfg_name" in
 esac
 
 model=$(_jq '.model.display_name // empty')
+effort=$(_jq '.effort.level // empty')
 cwd=$(_jq '.workspace.current_dir // empty')
 used_pct=$(_jq '.context_window.used_percentage // empty')
 context_size=$(_jq '.context_window.context_window_size // 200000')
@@ -147,6 +148,12 @@ if [[ -n "$model" ]]; then
     short_model=$(echo "$model" | sed 's/Claude //')
     add1 "${C_PURPLE}${ICON_MODEL} ${short_model}${C_RESET}"
 fi
+case "$effort" in
+    high) add1 "${C_CYAN}⚡ ${effort}${C_RESET}" ;;
+    xhigh) add1 "${C_ORANGE}⚡ ${effort}${C_RESET}" ;;
+    max) add1 "${C_BOLD}${C_ORANGE}⚡ ${effort}${C_RESET}" ;;
+    ?*) add1 "${C_GRAY}⚡ ${effort}${C_RESET}" ;;
+esac
 if [[ -n "$cwd" ]]; then
     add1 "${C_BLUE}$(basename "$cwd")${C_RESET}"
 fi
@@ -173,18 +180,18 @@ ctx_bar=$(progress_bar "$used_pct" 10)
 add2 "${C_GRAY_LIGHT}[ctx]${C_RESET} ${ctx_color}${ctx_bar} ${used_pct}%${C_RESET}"
 if [[ -n "$five_int" ]]; then
     add2 "${C_GRAY_LIGHT}[5h]${C_RESET} $(get_usage_color "$five_int")$(progress_bar "$five_int" 10) ${five_int}%${C_RESET}"
+else
+    add2 "${C_GRAY_LIGHT}[5h]${C_RESET} ${C_GRAY}$(progress_bar 0 10) --%${C_RESET}"
 fi
 if [[ -n "$seven_int" ]]; then
     add2 "${C_GRAY_LIGHT}[7d]${C_RESET} $(get_usage_color "$seven_int")$(progress_bar "$seven_int" 10) ${seven_int}%${C_RESET}"
+else
+    add2 "${C_GRAY_LIGHT}[7d]${C_RESET} ${C_GRAY}$(progress_bar 0 10) --%${C_RESET}"
 fi
 
 # LINE 3: Reset times
-if [[ -n "$five_int" ]]; then
-    add3 "${C_GRAY_LIGHT}[↻ 5h]${C_RESET} ${C_GRAY}${five_reset_fmt:-—}${C_RESET}"
-fi
-if [[ -n "$seven_int" ]]; then
-    add3 "${C_GRAY_LIGHT}[↻ 7d]${C_RESET} ${C_GRAY}${seven_reset_fmt:-—}${C_RESET}"
-fi
+add3 "${C_GRAY_LIGHT}[↻ 5h]${C_RESET} ${C_GRAY}${five_reset_fmt:-—}${C_RESET}"
+add3 "${C_GRAY_LIGHT}[↻ 7d]${C_RESET} ${C_GRAY}${seven_reset_fmt:-—}${C_RESET}"
 
 out="$line1"
 if [[ -n "$line2" ]]; then

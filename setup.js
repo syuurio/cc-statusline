@@ -38,6 +38,7 @@ if (!hasOAuth) {
 const allFields = [
   { value: 'account', label: 'Account', hint: '◆ work (DEV_PROFILE or CLAUDE_CONFIG_DIR)' },
   { value: 'model', label: 'Model name', hint: '🤖 Opus 4' },
+  { value: 'effort', label: 'Reasoning effort', hint: '⚡ high' },
   { value: 'dir', label: 'Directory', hint: 'folder name' },
   { value: 'git', label: 'Git branch', hint: 'with dirty indicator' },
   { value: 'tokens', label: 'Token count', hint: '57.0K/200.0K' },
@@ -142,6 +143,7 @@ const script = generateScript(scriptConfig)
 
 const sampleJson = JSON.stringify({
   model: { display_name: 'Claude Opus 4' },
+  effort: { level: 'high' },
   workspace: { current_dir: '/Users/demo/my-project' },
   context_window: {
     remaining_percentage: 72,
