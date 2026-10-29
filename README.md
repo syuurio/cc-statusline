@@ -18,18 +18,11 @@ The account label comes from `DEV_PROFILE` if set, otherwise from the `CLAUDE_CO
 
 ## Install
 
-In Claude Code 2.1.275 or later:
-
-```
-/plugin install cc-statusline --marketplace syuurio/cc-statusline
-/cc-statusline:setup
-```
-
-Or from a shell:
+cc-statusline is listed in the `syuurio` marketplace, [syuurio/claude-plugins](https://github.com/syuurio/claude-plugins). That repository is private, so git needs an account with read access:
 
 ```bash
-claude plugin marketplace add syuurio/cc-statusline
-claude plugin install cc-statusline@cc-statusline
+claude plugin marketplace add syuurio/claude-plugins
+claude plugin install cc-statusline@syuurio --scope user
 ```
 
 then run `/cc-statusline:setup` in a session. No restart is needed; the status line appears on the next update (send a message or press shift+tab).
@@ -38,7 +31,7 @@ A plugin cannot set `statusLine` on its own, which is why the setup step exists:
 
 ### Updates
 
-Third-party marketplaces do not auto-update by default. Turn it on in `/plugin` → **Marketplaces** → `cc-statusline` → **Enable auto-update**, or update manually with `claude plugin update cc-statusline@cc-statusline`. After an update, the next session refreshes the status line script automatically, keeping your customization.
+With auto-update on for the `syuurio` marketplace, Claude Code installs a new version on its own and shows `Plugin updated: cc-statusline · Run /reload-plugins to apply`. Third-party marketplaces start with auto-update off; turn it on in `/plugin` → **Marketplaces** → `syuurio` → **Enable auto-update**, or update manually with `claude plugin update cc-statusline@syuurio`. The next session then refreshes the status line script, keeping your customization.
 
 ### Customize
 
@@ -58,7 +51,7 @@ Run `/cc-statusline:setup` again and choose **Customize**:
 /cc-statusline:uninstall
 ```
 
-then `claude plugin uninstall cc-statusline@cc-statusline`. Run the skill first: Claude Code runs nothing when a plugin is uninstalled, so the skill is what removes the `statusLine` entry. If you skip it, the leftover entry is harmless and the status line just goes blank.
+then `claude plugin uninstall cc-statusline@syuurio`. Run the skill first: Claude Code runs nothing when a plugin is uninstalled, so the skill is what removes the `statusLine` entry. If you skip it, the leftover entry is harmless and the status line just goes blank.
 
 Disabling the plugin does **not** hide the status line; the script stays in place and only stops receiving updates. Use `/cc-statusline:uninstall` to turn it off.
 
@@ -95,7 +88,7 @@ skills/setup, uninstall    /cc-statusline:setup, /cc-statusline:uninstall
 src/statusline-command.sh  generated default script (npm run build)
 ```
 
-The script lives in `~/.claude/plugins/data/cc-statusline-cc-statusline/`, which survives plugin updates. `settings.json` points there through a guarded command that prints nothing if the script is missing. A customized config is saved next to it as `config.json`.
+The script lives in `~/.claude/plugins/data/cc-statusline-syuurio/`, which survives plugin updates. `settings.json` points there through a guarded command that prints nothing if the script is missing. A customized config is saved next to it as `config.json`.
 
 ### Development
 
@@ -103,10 +96,13 @@ The script lives in `~/.claude/plugins/data/cc-statusline-cc-statusline/`, which
 npm test
 npm run build                       # after editing lib/generate.js or lib/defaults.js
 claude plugin validate .
-claude plugin marketplace add ./    # install from the working tree
+claude --plugin-dir ./              # load the working tree for one session (cc-statusline@inline)
 ```
 
-Bump `version` in `.claude-plugin/plugin.json` for every release; installed copies stay on the pinned version until it changes.
+### Release
+
+1. Raise `version` in `.claude-plugin/plugin.json`. The version is what marks a release: commits pushed without raising it never reach installed copies. The marketplace entry carries no version, so syuurio/claude-plugins does not change.
+2. Merge to `main`.
 
 ---
 
