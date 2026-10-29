@@ -1,139 +1,112 @@
 # cc-statusline
 
-A rich, customizable 3-line status line for [Claude Code](https://docs.anthropic.com/en/docs/claude-code).
+A rich, customizable 3-line status line for [Claude Code](https://code.claude.com/docs), packaged as a Claude Code plugin.
 
 ```
-◆ work › 🤖 Opus 4 › my-project › main* › 57.0K/200.0K › $1.23
+◆ work › 🤖 Opus 5.5 › ⚡ xhigh › my-project › main* › 57.0K/1.0M › $1.23
 ├ [ctx] ━━──────── 28% › [5h] ━━━━━───── 50% › [7d] ━━━━━━━─── 80%
-╰ [↻5h] 04:00 21 Feb › [↻7d] 22:00 22 Feb
+╰ [↻ 5h] 04:00 21 Feb › [↻ 7d] 22:00 22 Feb
 ```
 
-**Line 1** — Account, model, directory, git branch, context tokens, session cost
-**Line 2** — Context window bar, 5-hour & 7-day API rate limit bars
+**Line 1** — Account, model, reasoning effort, directory, git branch, context tokens, session cost
+**Line 2** — Context window bar, 5-hour and 7-day rate limit bars
 **Line 3** — Rate limit reset times
 
-The account label comes from `DEV_PROFILE` if set, otherwise from the `CLAUDE_CONFIG_DIR` folder name (`~/.claude-work` → `work`); the default `~/.claude` shows as `default`. Each rate-limit window is shown only while Claude Code reports it, and line 3 is omitted when there are none (for example on Team or API plans).
+The account label comes from `DEV_PROFILE` if set, otherwise from the `CLAUDE_CONFIG_DIR` folder name (`~/.claude-work` → `work`); the default `~/.claude` shows as `default`. Effort is colored by level and hidden when the model does not support it. Rate limits arrive only after the session's first API response (Pro and Max plans), so the bars show `--%` placeholders until then.
 
 ---
 
-## Quick Start
+## Install
+
+In Claude Code 2.1.275 or later:
+
+```
+/plugin install cc-statusline --marketplace syuurio/cc-statusline
+/cc-statusline:setup
+```
+
+Or from a shell:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/syuurio/cc-statusline/main/install.sh | bash
+claude plugin marketplace add syuurio/cc-statusline
+claude plugin install cc-statusline@cc-statusline
 ```
 
-Restart Claude Code after installing.
+then run `/cc-statusline:setup` in a session. No restart is needed; the status line appears on the next update (send a message or press shift+tab).
 
----
+A plugin cannot set `statusLine` on its own, which is why the setup step exists: it writes the entry into `settings.json` (in `CLAUDE_CONFIG_DIR` when set).
 
-## Interactive Wizard
+### Updates
 
-Want to customize? The wizard lets you configure everything visually with a live preview:
+Third-party marketplaces do not auto-update by default. Turn it on in `/plugin` → **Marketplaces** → `cc-statusline` → **Enable auto-update**, or update manually with `claude plugin update cc-statusline@cc-statusline`. After an update, the next session refreshes the status line script automatically, keeping your customization.
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/syuurio/cc-statusline/main/install.sh | bash -s -- --wizard
-```
+### Customize
 
-The wizard guides you through:
+Run `/cc-statusline:setup` again and choose **Customize**:
 
-| Option           | Choices                                                                  |
-| ---------------- | ------------------------------------------------------------------------ |
-| **Fields**       | Model, directory, git, tokens, cost, context bar, rate bars, reset times |
-| **Separator**    | `›` `\|` `·` `→`                                                         |
-| **Color scheme** | Default (ANSI 256), Traffic light (green/yellow/red), Monochrome         |
-| **Bar style**    | Thin `━─`, Dot `●○`, Block `█░`                                          |
-| **Thresholds**   | Warn % and Danger % for color coding                                     |
+| Option           | Choices                                                                          |
+| ---------------- | -------------------------------------------------------------------------------- |
+| **Fields**       | Account, model, effort, directory, git, tokens, cost, context bar, rate bars, reset times |
+| **Separator**    | `›` `\|` `·` `→`                                                                 |
+| **Color scheme** | Default (ANSI 256), Traffic light (green/yellow/red), Monochrome                 |
+| **Bar style**    | Thin `━─`, Dot `●○`, Block `█░`                                                  |
+| **Thresholds**   | Warn % and danger % for color coding                                             |
 
-A live preview shows your statusline before writing anything. On confirmation, the wizard writes:
-
-- `~/.claude/statusline-command.sh` — generated bash script
-- `~/.claude/settings.json` — patched with `statusLine` config
-
-Requires **Node.js >= 18** for the wizard only. The generated script itself has no Node.js dependency.
-
----
-
-## Features
-
-- **Fully customizable** — pick exactly which fields to show via the interactive wizard
-- **Live preview** — see your statusline before committing
-- **3 color schemes** — ANSI 256, traffic light, monochrome
-- **3 bar styles** — thin, dot, block
-- **Background fetch** — API usage is fetched with stale-while-revalidate caching (no UI blocking)
-- **Cross-platform** — macOS (Keychain) + Linux (credentials file)
-- **Self-contained** — generated script has zero runtime dependencies beyond standard CLI tools
-- **Pure architecture** — script generator is a pure function, fully testable
-
----
-
-## How It Works
-
-Claude Code pipes JSON into the statusline script via stdin. The script:
-
-1. Parses session metadata (model, tokens, cost, context window) with `jq`
-2. Reads git branch and dirty status from the working directory
-3. Fetches API usage data with a 3-minute stale-while-revalidate cache (background fetch, no UI blocking)
-4. Renders a 3-line output with ANSI colors and progress bars
-
-Credentials are read from macOS Keychain first, falling back to `~/.claude/.credentials.json` on Linux. Cache is stored in `${XDG_CACHE_HOME:-~/.cache}/cc-statusline/`.
-
-### Architecture
+### Uninstall
 
 ```
-lib/defaults.js                  Single source of truth for shared constants
-       ↓
-lib/generate.js (pure)           config → bash script string
-       ↓
-setup.js (wizard)                scripts/build.js
-  @clack/prompts flow              generates src/statusline-command.sh
-  ├── detect credentials           from default config (npm run build)
-  ├── select fields
-  ├── choose options             lib/patch-settings.js (pure)
-  ├── live preview                 JSON string → patched JSON string
-  └── write files
-                                 lib/detect-credentials.js
-                                   keychain / file → boolean
+/cc-statusline:uninstall
 ```
 
-`src/statusline-command.sh` is a **generated file** — it is produced by `npm run build` using `lib/generate.js` with default config. This ensures the quick-install script and the wizard output come from the same code path.
+then `claude plugin uninstall cc-statusline@cc-statusline`. Run the skill first: Claude Code runs nothing when a plugin is uninstalled, so the skill is what removes the `statusLine` entry. If you skip it, the leftover entry is harmless and the status line just goes blank.
 
-The wizard (`setup.js`) is the only module that performs I/O. `generate.js` and `patch-settings.js` are pure functions.
+Disabling the plugin does **not** hide the status line; the script stays in place and only stops receiving updates. Use `/cc-statusline:uninstall` to turn it off.
 
-### Development
+### Migrating from v1
 
-After modifying `lib/generate.js` or `lib/defaults.js`, regenerate the default script:
-
-```bash
-npm run build
-```
-
-This updates `src/statusline-command.sh`, which is what `install.sh` downloads.
+v1 installed with `install.sh` into `~/.claude/statusline-command.sh`. Install the plugin and run `/cc-statusline:setup`; it replaces the `statusLine` entry and offers to delete the old script.
 
 ---
 
 ## Requirements
 
-The **generated bash script** requires:
+| Tool   | Purpose                                  |
+| ------ | ---------------------------------------- |
+| `jq`   | JSON parsing                             |
+| `bc`   | Arithmetic                               |
+| `git`  | Branch and status detection              |
+| `node` | `/cc-statusline:setup` (Node.js >= 18)   |
 
-| Tool      | Purpose                      |
-| --------- | ---------------------------- |
-| `jq`      | JSON parsing                 |
-| `bc`      | Arithmetic                   |
-| `git`     | Branch and status detection  |
-| `curl`    | API usage requests           |
-| `python3` | Date formatting (macOS only) |
-
-The **interactive wizard** additionally requires Node.js >= 18.
+Once set up, the status line itself needs only bash, `jq`, `bc` and `git`. Without `node`, a customized script keeps working but is not regenerated after plugin updates.
 
 ---
 
-## Uninstall
+## How It Works
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/syuurio/cc-statusline/main/uninstall.sh | bash
+Claude Code pipes session JSON into the status line script on stdin. The script parses it with `jq`, reads the git branch from the working directory, and renders three lines with ANSI colors and progress bars. Rate limits and effort come from that same stdin JSON; nothing is fetched over the network.
+
+```
+lib/defaults.js            default config, single source of truth
+lib/generate.js (pure)     config → bash script
+lib/patch-settings.js      settings.json → patched settings.json
+lib/cli.js                 generate / install / uninstall / detect-oauth
+scripts/sync.sh            SessionStart hook: refresh the script in the plugin data dir
+skills/setup, uninstall    /cc-statusline:setup, /cc-statusline:uninstall
+src/statusline-command.sh  generated default script (npm run build)
 ```
 
-This removes the statusline script, cleans up `settings.json`, and deletes the cache directory.
+The script lives in `~/.claude/plugins/data/cc-statusline-cc-statusline/`, which survives plugin updates. `settings.json` points there through a guarded command that prints nothing if the script is missing. A customized config is saved next to it as `config.json`.
+
+### Development
+
+```bash
+npm test
+npm run build                       # after editing lib/generate.js or lib/defaults.js
+claude plugin validate .
+claude plugin marketplace add ./    # install from the working tree
+```
+
+Bump `version` in `.claude-plugin/plugin.json` for every release; installed copies stay on the pinned version until it changes.
 
 ---
 
@@ -141,9 +114,7 @@ This removes the statusline script, cleans up `settings.json`, and deletes the c
 
 This project is **not affiliated with, endorsed by, or officially supported by Anthropic**. It is an independent, community-built tool.
 
-The rate limit feature (5-hour / 7-day bars and reset times) accesses locally stored OAuth credentials to retrieve usage data. This may not be compliant with Anthropic's [Consumer Terms of Service](https://www.anthropic.com/legal/consumer-terms), which state that OAuth tokens are intended exclusively for Claude Code and Claude.ai. Use this feature at your own risk.
-
-If you prefer to avoid any ToS concerns, you can use the interactive wizard to disable rate limit fields — all other features (model, directory, git, tokens, cost, context bar) rely solely on data provided by Claude Code via stdin and do not access any external credentials or APIs.
+During setup, `detect-oauth` checks whether Claude Code OAuth credentials exist (macOS Keychain or `~/.claude/.credentials.json`) only to decide whether to offer the rate limit fields. It checks that a token is present and nothing more: the token is never stored, sent anywhere, or used to call an API.
 
 ---
 
