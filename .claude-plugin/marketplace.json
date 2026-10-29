@@ -1,0 +1,12 @@
+{
+  "name": "cc-statusline",
+  "description": "cc-statusline, a custom status line for Claude Code",
+  "owner": { "name": "Yuuri Syu" },
+  "plugins": [
+    {
+      "name": "cc-statusline",
+      "source": "./",
+      "description": "A 3-line status line for Claude Code"
+    }
+  ]
+}

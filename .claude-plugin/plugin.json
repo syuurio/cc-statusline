@@ -1,0 +1,9 @@
+{
+  "name": "cc-statusline",
+  "version": "2.0.0",
+  "description": "A 3-line status line for Claude Code: account, model, effort, git, tokens, cost, context and rate-limit bars",
+  "author": { "name": "Yuuri Syu" },
+  "repository": "https://github.com/syuurio/cc-statusline",
+  "license": "MIT",
+  "keywords": ["statusline", "status-line"]
+}
