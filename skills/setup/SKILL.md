@@ -35,7 +35,7 @@ Ask round 1 in one AskUserQuestion call, every question `multiSelect: true`:
 | Question | Options (field id) |
 | --- | --- |
 | Line 1 identity | Account (`account`), Model (`model`), Effort (`effort`), Directory (`dir`) |
-| Line 1 status | Git branch (`git`), Token count (`tokens`), Session cost (`cost`), plus Context bar (`ctxBar`) when `detect-oauth` is `false` |
+| Line 1 status | Git branch (`git`), Context tokens (`tokens`, tokens in the context window over its size, e.g. 57.0K/1.0M), Session cost (`cost`), plus Context bar (`ctxBar`) when `detect-oauth` is `false` |
 | Bars (only when `detect-oauth` is `true`) | Context bar (`ctxBar`), 5h/7d rate bars (`rateBar`), Reset times (`resetTimes`) |
 
 Ask round 2 in one AskUserQuestion call, single-select:

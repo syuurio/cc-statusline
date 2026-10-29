@@ -39,7 +39,7 @@ Run `/cc-statusline:setup` again and choose **Customize**:
 
 | Option           | Choices                                                                          |
 | ---------------- | -------------------------------------------------------------------------------- |
-| **Fields**       | Account, model, effort, directory, git, tokens, cost, context bar, rate bars, reset times |
+| **Fields**       | Account, model, effort, directory, git, context tokens, cost, context bar, rate bars, reset times |
 | **Separator**    | `›` `\|` `·` `→`                                                                 |
 | **Color scheme** | Default (ANSI 256), Traffic light (green/yellow/red), Monochrome                 |
 | **Bar style**    | Thin `━─`, Dot `●○`, Block `█░`                                                  |
@@ -52,6 +52,8 @@ Run `/cc-statusline:setup` again and choose **Customize**:
 ```
 
 then `claude plugin uninstall cc-statusline@syuurio`. Run the skill first: Claude Code runs nothing when a plugin is uninstalled, so the skill is what removes the `statusLine` entry. If you skip it, the leftover entry is harmless and the status line just goes blank.
+
+Uninstalling deletes the plugin data dir, including a customized `config.json`, so run `/cc-statusline:setup` again after reinstalling.
 
 Disabling the plugin does **not** hide the status line; the script stays in place and only stops receiving updates. Use `/cc-statusline:uninstall` to turn it off.
 
@@ -88,7 +90,7 @@ skills/setup, uninstall    /cc-statusline:setup, /cc-statusline:uninstall
 src/statusline-command.sh  generated default script (npm run build)
 ```
 
-The script lives in `~/.claude/plugins/data/cc-statusline-syuurio/`, which survives plugin updates. `settings.json` points there through a guarded command that prints nothing if the script is missing. A customized config is saved next to it as `config.json`.
+The script lives in `plugins/data/cc-statusline-syuurio/` under the config dir (`CLAUDE_CONFIG_DIR`, or `~/.claude` by default), which survives plugin updates. `settings.json` points there through a guarded command that prints nothing if the script is missing. A customized config is saved next to it as `config.json`.
 
 ### Development
 
