@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { mkdtempSync, writeFileSync, readFileSync, existsSync, statSync } from 'node:fs'
+import { mkdtempSync, writeFileSync, readFileSync, existsSync, statSync, chmodSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -94,6 +94,17 @@ describe('cli install / uninstall', () => {
     writeFileSync(settingsFile, JSON.stringify({ ...installed, theme: 'dark' }))
     assert.equal(cli(['uninstall', '--data', data], env).status, 0)
     assert.deepEqual(JSON.parse(readFileSync(settingsFile, 'utf8')), { theme: 'dark' })
+  })
+
+  it('creates settings.json as 0600 and preserves an existing mode', () => {
+    const { data, configDir } = sandbox()
+    const settingsFile = join(configDir, 'settings.json')
+    const env = { CLAUDE_CONFIG_DIR: configDir }
+    cli(['install', '--data', data], env)
+    assert.equal(statSync(settingsFile).mode & 0o777, 0o600)
+    chmodSync(settingsFile, 0o640)
+    cli(['uninstall', '--data', data], env)
+    assert.equal(statSync(settingsFile).mode & 0o777, 0o640)
   })
 
   it('uninstall without a settings file is a no-op', () => {
